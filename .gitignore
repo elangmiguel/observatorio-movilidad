@@ -1,0 +1,65 @@
+# =============================================================================
+# Observatorio de Malla Vial - Laravel
+# =============================================================================
+
+# ---- Secretos y configuración local (nunca se versionan)
+.env
+.env.*
+!.env.example
+/auth.json
+*.pem
+*.key
+*.p12
+*.jks
+/storage/*.key
+
+# ---- Dependencias y compilados
+/vendor
+/node_modules
+/public/build
+/public/hot
+/public/storage
+/bootstrap/cache/*.php
+
+# ---- Almacenamiento y registros
+*.log
+/storage/pail
+/storage/logs/*
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/views/*.php
+# Disco local de desarrollo de fotografías (en producción están en Supabase Storage)
+/storage/app/private/observatorio
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+# ---- Copias y volcados de la base de datos con datos reales
+/database/backups
+*.dump
+*.backup
+*.sql.gz
+*.bak
+
+# ---- Supabase CLI (archivos temporales y credenciales locales)
+/supabase/.temp
+/supabase/.branches
+/supabase/.env
+
+# ---- Pruebas y herramientas
+.phpunit.result.cache
+/.phpunit.cache
+.phpactor.json
+/coverage
+/build
+
+# ---- Editores y sistema operativo
+/.idea
+/.vscode
+/.fleet
+/.nova
+/.zed
+*.swp
+.DS_Store
+Thumbs.db
+Homestead.json
+Homestead.yaml
