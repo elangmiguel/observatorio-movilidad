@@ -61,7 +61,7 @@ Route::middleware('auth:supabase')->group(function (){
         Route::post('recibir',                  [ReporteController::class, 'recibir'])
             ->middleware('permiso:reportes.crear');
 
-        Route::get('mis-reportes',              [ReporteController::class, 'mis-reportes'])
+        Route::get('mis-reportes',              [ReporteController::class, 'misReportes'])
             ->middleware('permiso:reportes.ver_propios');
 
         Route::get('/',                         [ReporteController::class, 'index'])
