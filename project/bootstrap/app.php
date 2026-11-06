@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware
+            ->prepend(HandleCors::class)
             ->alias(['permiso' => \App\Http\Middleware\VerificarPermiso::class])
             ->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
