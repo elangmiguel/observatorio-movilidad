@@ -36,6 +36,16 @@ use Illuminate\Support\Facades\Route;
  *
  */
 
+Route::get('/', function () {
+    return response()->json([
+        'name'      => config('app.name'),
+        'version'   => '1.0.0',
+        'status'    => 'ok',
+        'docs'      => url('/scalar'),
+        'timestamp' => now()->toIso8601String(),
+    ]);
+});
+
 Route::middleware('auth:supabase')->group(function (){
 
     Route::get('me', [UsuarioController::class, 'perfil']);
