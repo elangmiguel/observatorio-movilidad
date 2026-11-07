@@ -30,32 +30,36 @@ class ReporteController extends Controller
         'prioridad_id', 'prioridad', 'puntaje', 'intervencion_id', 'estado_atencion',
     ];
 
-    /** Recibe un reporte de la aplicación móvil (multipart con la fotografía). Es idempotente. */
+    /** Recibe un reporte de la aplicación móvil (multipart con una o varias fotografías en fotos[]). Es idempotente. */
     public function recibir(Request $request, RecepcionReporteService $servicio): JsonResponse
     {
         $datos = $request->validate([
-            'codigo_instalacion'    => ['required', 'string', 'max:64'],
-            'plataforma'            => ['nullable', 'string', 'max:20'],
-            'modelo'                => ['nullable', 'string', 'max:80'],
-            'version_app'           => ['nullable', 'string', 'max:20'],
-            'codigo_local'          => ['required', 'string', 'max:64'],
-            'campana_id'            => ['nullable', 'uuid', 'exists:campanas,id'],
-            'latitud'               => ['required', 'numeric', 'between:-90,90'],
-            'longitud'              => ['required', 'numeric', 'between:-180,180'],
-            'precision_gps_m'       => ['nullable', 'numeric', 'min:0', 'max:99999'],
-            'fuente_ubicacion'      => ['required', 'in:gps,exif,manual,red'],
-            'fecha_captura'         => ['required', 'date'],
-            'via_sector'            => ['nullable', 'string', 'max:150'],
-            'barrio_reportado'      => ['nullable', 'string', 'max:100'],
-            'punto_referencia'      => ['nullable', 'string', 'max:200'],
-            'tipo_deterioro_id'     => ['nullable', 'integer', 'exists:tipos_deterioro,id'],
-            'tipo_superficie_id'    => ['nullable', 'integer', 'exists:tipos_superficie,id'],
+            'codigo_instalacion' => ['required', 'string', 'max:64'],
+            'plataforma' => ['nullable', 'string', 'max:20'],
+            'modelo' => ['nullable', 'string', 'max:80'],
+            'version_app' => ['nullable', 'string', 'max:20'],
+            'codigo_local' => ['required', 'string', 'max:64'],
+            'campana_id' => ['nullable', 'uuid', 'exists:campanas,id'],
+            'latitud' => ['required', 'numeric', 'between:-90,90'],
+            'longitud' => ['required', 'numeric', 'between:-180,180'],
+            'precision_gps_m' => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'fuente_ubicacion' => ['required', 'in:gps,exif,manual,red'],
+            'fecha_captura' => ['required', 'date'],
+            'via_sector' => ['nullable', 'string', 'max:150'],
+            'barrio_reportado' => ['nullable', 'string', 'max:100'],
+            'punto_referencia' => ['nullable', 'string', 'max:200'],
+            'tipo_deterioro_id' => ['nullable', 'integer', 'exists:tipos_deterioro,id'],
+            'tipo_superficie_id' => ['nullable', 'integer', 'exists:tipos_superficie,id'],
             'descripcion_ciudadano' => ['nullable', 'string'],
-            'foto'                  => ['required', 'file', 'image', 'max:15360'],
+            'foto' => ['required_without:fotos', 'file', 'image', 'max:15360'],
+            'fotos' => ['required_without:foto', 'array', 'min:1', 'max:5'],
+            'fotos.*' => ['file', 'image', 'max:15360'],
         ]);
 
+        $fotos = Arr::wrap($request->file('fotos') ?? $request->file('foto'));
+
         ['reporte' => $reporte, 'duplicado' => $duplicado] =
-            $servicio->recibir($request->user(), $datos, $request->file('foto'));
+            $servicio->recibir($request->user(), $datos, $fotos);
 
         return response()->json([
             'id' => $reporte->id,
@@ -63,6 +67,7 @@ class ReporteController extends Controller
             'estado_reporte_id' => $reporte->estado_reporte_id,
             'comuna_id' => $reporte->comuna_id,
             'barrio_id' => $reporte->barrio_id,
+            'fotos_registradas' => Fotografia::where('reporte_id', $reporte->id)->count(),
         ], $duplicado ? 200 : 201);
     }
 
