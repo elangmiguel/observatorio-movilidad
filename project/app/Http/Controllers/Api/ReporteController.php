@@ -7,10 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Models\EstadoReporte;
 use App\Models\Reporte;
 use App\Models\Usuario;
+use App\Models\Fotografia;
 use App\Services\Auditor;
 use App\Services\RecepcionReporteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 
 class ReporteController extends Controller
@@ -32,24 +34,24 @@ class ReporteController extends Controller
     public function recibir(Request $request, RecepcionReporteService $servicio): JsonResponse
     {
         $datos = $request->validate([
-            'codigo_instalacion' => ['required', 'string', 'max:64'],
-            'plataforma' => ['nullable', 'string', 'max:20'],
-            'modelo' => ['nullable', 'string', 'max:80'],
-            'version_app' => ['nullable', 'string', 'max:20'],
-            'codigo_local' => ['required', 'string', 'max:64'],
-            'campana_id' => ['nullable', 'uuid', 'exists:campanas,id'],
-            'latitud' => ['required', 'numeric', 'between:-90,90'],
-            'longitud' => ['required', 'numeric', 'between:-180,180'],
-            'precision_gps_m' => ['nullable', 'numeric', 'min:0', 'max:99999'],
-            'fuente_ubicacion' => ['required', 'in:gps,exif,manual,red'],
-            'fecha_captura' => ['required', 'date'],
-            'via_sector' => ['nullable', 'string', 'max:150'],
-            'barrio_reportado' => ['nullable', 'string', 'max:100'],
-            'punto_referencia' => ['nullable', 'string', 'max:200'],
-            'tipo_deterioro_id' => ['nullable', 'integer', 'exists:tipos_deterioro,id'],
-            'tipo_superficie_id' => ['nullable', 'integer', 'exists:tipos_superficie,id'],
+            'codigo_instalacion'    => ['required', 'string', 'max:64'],
+            'plataforma'            => ['nullable', 'string', 'max:20'],
+            'modelo'                => ['nullable', 'string', 'max:80'],
+            'version_app'           => ['nullable', 'string', 'max:20'],
+            'codigo_local'          => ['required', 'string', 'max:64'],
+            'campana_id'            => ['nullable', 'uuid', 'exists:campanas,id'],
+            'latitud'               => ['required', 'numeric', 'between:-90,90'],
+            'longitud'              => ['required', 'numeric', 'between:-180,180'],
+            'precision_gps_m'       => ['nullable', 'numeric', 'min:0', 'max:99999'],
+            'fuente_ubicacion'      => ['required', 'in:gps,exif,manual,red'],
+            'fecha_captura'         => ['required', 'date'],
+            'via_sector'            => ['nullable', 'string', 'max:150'],
+            'barrio_reportado'      => ['nullable', 'string', 'max:100'],
+            'punto_referencia'      => ['nullable', 'string', 'max:200'],
+            'tipo_deterioro_id'     => ['nullable', 'integer', 'exists:tipos_deterioro,id'],
+            'tipo_superficie_id'    => ['nullable', 'integer', 'exists:tipos_superficie,id'],
             'descripcion_ciudadano' => ['nullable', 'string'],
-            'foto' => ['required', 'file', 'image', 'max:15360'],
+            'foto'                  => ['required', 'file', 'image', 'max:15360'],
         ]);
 
         ['reporte' => $reporte, 'duplicado' => $duplicado] =

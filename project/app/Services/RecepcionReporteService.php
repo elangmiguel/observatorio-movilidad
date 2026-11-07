@@ -236,3 +236,4 @@ class RecepcionReporteService
         return 2 * $radio * asin(min(1, sqrt($a)));
     }
 }
+
