@@ -50,6 +50,7 @@ class ReporteController extends Controller
             'punto_referencia' => ['nullable', 'string', 'max:200'],
             'tipo_deterioro_id' => ['nullable', 'integer', 'exists:tipos_deterioro,id'],
             'tipo_superficie_id' => ['nullable', 'integer', 'exists:tipos_superficie,id'],
+            'estado_reporte_id' => ['nullable', 'integer', 'exists:estados_reporte,id'],
             'descripcion_ciudadano' => ['nullable', 'string'],
             'foto' => ['required_without:fotos', 'file', 'image', 'max:15360'],
             'fotos' => ['required_without:foto', 'array', 'min:1', 'max:5'],
