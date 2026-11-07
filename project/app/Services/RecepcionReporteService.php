@@ -18,16 +18,17 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Recibe un reporte enviado desde la aplicación móvil: es idempotente, guarda la
- * fotografía en el almacenamiento de objetos, lee sus metadatos EXIF y deja
+ * Recibe un reporte enviado desde la aplicación móvil: es idempotente, guarda las
+ * fotografías en el almacenamiento de objetos, lee sus metadatos EXIF y deja
  * constancia de cada intento en la bitácora de sincronizaciones.
  */
 class RecepcionReporteService
 {
     /**
+     * @param  UploadedFile[]  $fotos  Una o varias fotografías; la primera queda como principal.
      * @return array{reporte: Reporte, duplicado: bool}
      */
-    public function recibir(Usuario $usuario, array $datos, UploadedFile $foto): array
+    public function recibir(Usuario $usuario, array $datos, array $fotos): array
     {
         $dispositivo = Dispositivo::firstOrCreate(
             ['codigo_instalacion' => $datos['codigo_instalacion']],
@@ -58,22 +59,30 @@ class RecepcionReporteService
             return ['reporte' => $existente, 'duplicado' => true];
         }
 
-        $hash = hash_file('sha256', $foto->getRealPath());
+        // Cada fotografía debe ser única: ni registrada antes ni repetida dentro del mismo envío.
+        $hashes = [];
 
-        if (Fotografia::where('hash_sha256', $hash)->exists()) {
-            $this->bitacora(
-                $dispositivo, $usuario, $datos['codigo_local'], null, 'error', $intento,
-                'FOTO_DUPLICADA', 'La fotografía ya fue registrada en otro reporte.'
-            );
+        foreach ($fotos as $i => $foto) {
+            $hash = hash_file('sha256', $foto->getRealPath());
 
-            throw ValidationException::withMessages([
-                'foto' => 'Esta fotografía ya fue registrada en otro reporte.',
-            ]);
+            if (in_array($hash, $hashes, true) || Fotografia::where('hash_sha256', $hash)->exists()) {
+                $this->bitacora(
+                    $dispositivo, $usuario, $datos['codigo_local'], null, 'error', $intento,
+                    'FOTO_DUPLICADA',
+                    'La fotografía #' . ($i + 1) . ' ya fue registrada o está repetida en el envío.'
+                );
+
+                throw ValidationException::withMessages([
+                    "fotos.$i" => 'Esta fotografía ya fue registrada o está repetida en el envío.',
+                ]);
+            }
+
+            $hashes[$i] = $hash;
         }
 
         try {
             $reporte = DB::transaction(
-                fn () => $this->crear($usuario, $dispositivo, $datos, $foto, $hash)
+                fn () => $this->crear($usuario, $dispositivo, $datos, $fotos, $hashes)
             );
         } catch (Throwable $e) {
             $this->bitacora(
@@ -89,7 +98,11 @@ class RecepcionReporteService
         return ['reporte' => $reporte, 'duplicado' => false];
     }
 
-    private function crear(Usuario $usuario, Dispositivo $dispositivo, array $datos, UploadedFile $foto, string $hash): Reporte
+    /**
+     * @param  UploadedFile[]  $fotos
+     * @param  array<int, string>  $hashes  Hash SHA-256 de cada fotografía, con el mismo índice que $fotos.
+     */
+    private function crear(Usuario $usuario, Dispositivo $dispositivo, array $datos, array $fotos, array $hashes): Reporte
     {
         $reporte = Reporte::create(array_merge(
             [
@@ -104,6 +117,36 @@ class RecepcionReporteService
             ])
         ));
 
+        $guardadas = [];
+
+        try {
+            foreach (array_values($fotos) as $orden => $foto) {
+                $this->guardarFotografia($reporte, $datos, $foto, $hashes[$orden], $orden, $guardadas);
+            }
+        } catch (Throwable $e) {
+            // La transacción revierte las filas, pero los archivos ya subidos hay que borrarlos.
+            if ($guardadas) {
+                Storage::disk('observatorio')->delete($guardadas);
+            }
+
+            throw $e;
+        }
+
+        // Recarga los valores que asigna la base: estado, comuna y barrio.
+        return $reporte->refresh();
+    }
+
+    /**
+     * @param  string[]  $guardadas  Rutas ya almacenadas; se amplía por referencia para poder limpiar si algo falla.
+     */
+    private function guardarFotografia(
+        Reporte $reporte,
+        array $datos,
+        UploadedFile $foto,
+        string $hash,
+        int $orden,
+        array &$guardadas,
+    ): void {
         $ruta = $foto->getRealPath();
         $dimensiones = @getimagesize($ruta) ?: [null, null];
         $exif = $this->leerExif($ruta);
@@ -112,12 +155,14 @@ class RecepcionReporteService
         $guardada = Storage::disk('observatorio')->putFileAs(
             'reportes/' . now()->format('Y/m'),
             $foto,
-            $reporte->id . '.' . $extension
+            $reporte->id . '-' . ($orden + 1) . '.' . $extension
         );
 
         if ($guardada === false) {
             throw new RuntimeException('No se pudo guardar la fotografía en el almacenamiento.');
         }
+
+        $guardadas[] = $guardada;
 
         // La columna admite hasta 999999.99 m; una coordenada EXIF absurda no debe impedir el reporte.
         $distancia = isset($exif['latitud'], $exif['longitud'])
@@ -128,7 +173,7 @@ class RecepcionReporteService
 
         Fotografia::create([
             'reporte_id' => $reporte->id,
-            'es_principal' => true,
+            'es_principal' => $orden === 0,
             'nombre_archivo' => Str::limit($foto->getClientOriginalName(), 255, ''),
             'url_almacenamiento' => $guardada,
             'hash_sha256' => $hash,
@@ -142,9 +187,6 @@ class RecepcionReporteService
             'exif_orientacion' => $exif['orientacion'] ?? null,
             'distancia_gps_exif_m' => $distancia,
         ]);
-
-        // Recarga los valores que asigna la base: estado, comuna y barrio.
-        return $reporte->refresh();
     }
 
     private function bitacora(
@@ -236,4 +278,3 @@ class RecepcionReporteService
         return 2 * $radio * asin(min(1, sqrt($a)));
     }
 }
-
