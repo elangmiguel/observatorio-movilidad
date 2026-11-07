@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['api/*', 'api', 'scalar', 'scalar/*', 'sanctum/csrf-cookie'],
     'allowed_methods'   => ['*'],
     'allowed_origins'   => [
         'https://68.211.72.129',
@@ -15,3 +15,4 @@ return [
     'max_age'           => 3600,
     'supports_credentials' => false,
 ];
+
