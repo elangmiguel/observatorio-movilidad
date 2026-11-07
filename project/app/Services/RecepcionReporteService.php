@@ -24,6 +24,9 @@ use Throwable;
  */
 class RecepcionReporteService
 {
+    /** Estado con el que nace un reporte cuando el cliente no envía uno. */
+    private const ESTADO_REPORTE_INICIAL = 1;
+
     /**
      * @param  UploadedFile[]  $fotos  Una o varias fotografías; la primera queda como principal.
      * @return array{reporte: Reporte, duplicado: bool}
@@ -109,6 +112,7 @@ class RecepcionReporteService
                 'codigo_local' => $datos['codigo_local'],
                 'dispositivo_id' => $dispositivo->id,
                 'usuario_id' => $usuario->id,
+                'estado_reporte_id' => $datos['estado_reporte_id'] ?? self::ESTADO_REPORTE_INICIAL,
             ],
             Arr::only($datos, [
                 'campana_id', 'latitud', 'longitud', 'precision_gps_m', 'fuente_ubicacion',
@@ -132,7 +136,7 @@ class RecepcionReporteService
             throw $e;
         }
 
-        // Recarga los valores que asigna la base: estado, comuna y barrio.
+        // Recarga los valores que asigna la base: comuna y barrio.
         return $reporte->refresh();
     }
 
